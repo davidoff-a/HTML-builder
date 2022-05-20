@@ -8,19 +8,24 @@ const writeStream = fs.createWriteStream(
 );
 
 stdout.write("Enter your text here =>");
+const streamQuit = () => {
+  stdout.write("\nData was written successfully...");
+  writeStream.destroy();
+  stdin.destroy();
+  fs.rm(path.resolve(__dirname, "output.txt"), (err) => {
+    if (err) {
+      throw new Error(err.message);
+    }
+  });
+};
 
 stdin.on("data", (data) => {
   if (data.toString().trim().toLowerCase() === "exit") {
-    stdout.write("Data was written successfully...");
-    writeStream.destroy();
-    stdin.destroy();
-    fs.rm(path.resolve(__dirname, "output.txt"), (err) => {
-      if (err) {
-        throw new Error(err.message);
-      }
-    });
+    streamQuit();
   } else {
     stdout.write("Enter your text here =>");
     writeStream.write(data);
   }
 });
+
+process.on("SIGINT", streamQuit);
