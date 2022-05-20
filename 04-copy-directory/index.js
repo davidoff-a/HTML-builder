@@ -1,6 +1,5 @@
 const { readdir, mkdir, copyFile } = require("node:fs/promises");
 const path = require("path");
-const makeDir = async (folderName) => {};
 try {
   mkdir(path.resolve(__dirname, "files-copy"), { recursive: true }, (err) => {
     if (err) {
