@@ -1,11 +1,5 @@
 const { readdir, mkdir, copyFile, stat } = require("node:fs/promises");
 const path = require("path");
-// TODO: refactor code for using recursive function
-// TODO: get files from root folder
-// TODO: does files-copy folder exist
-// TODO: get files from files-copy
-// TODO: compare files by name and edition date
-// TODO: copy different files
 
 let sourceDir = ["files"];
 let destinationDir = ["files-copy"];
