@@ -1,7 +1,7 @@
 const { readdir, stat } = require("fs/promises");
 const path = require("path");
 const fs = require("fs");
-// const { stdout } = process;
+
 const writeStream = fs.createWriteStream(
   path.resolve(__dirname, "project-dist", "bundle.css"),
   { encoding: "utf-8" }
