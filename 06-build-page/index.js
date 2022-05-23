@@ -1,7 +1,8 @@
 const { readdir, mkdir, copyFile, stat, access } = require("node:fs/promises");
 const path = require("path");
 const fs = require("fs");
-const { match } = require("assert");
+const { match, strictEqual } = require("assert");
+const { createSecurePair } = require("tls");
 const { stdout } = process;
 
 let sourceDir = ["assets"];
@@ -50,43 +51,54 @@ const mergeStyles = async () => {
   );
 
   try {
-    readdir(path.resolve(__dirname, "styles"), {
+    const data = await readdir(path.resolve(__dirname, "styles"), {
       withFileTypes: true,
-    }).then((data) => {
-      for (let fileName of data) {
-        if (!fileName.isDirectory() && fileName.name.slice(-3) === "css") {
-          const readStream = fs.createReadStream(
-            path.join(__dirname, "styles", fileName.name),
-            {
-              encoding: "utf-8",
-            }
-          );
-          readStream.on("data", (styles) => {
-            writeStream.write(styles);
-          });
-          readStream.on("end", () => {
-            readStream.close();
-          });
-        }
-      }
     });
+    for (let fileName of data) {
+      if (!fileName.isDirectory() && fileName.name.slice(-3) === "css") {
+        const readStream = fs.createReadStream(
+          path.join(__dirname, "styles", fileName.name),
+          {
+            encoding: "utf-8",
+          }
+        );
+        readStream.on("data", (styles) => {
+          writeStream.write(styles);
+        });
+        readStream.on("end", () => {
+          readStream.close();
+        });
+      }
+    }
   } catch (error) {
     console.error("there was an error:", error.message);
   }
 };
+
 const buildHTML = async () => {
   const readTemplateStream = fs.createReadStream(
     path.resolve(__dirname, "template.html")
   );
-  const writeIndexHTMLStream = fs.createWriteStream(
-    path.resolve(__dirname, ...destinationDir, "index.html")
-  );
-  readTemplateStream.on("data", (chunk) => {
-    const replaceField = new RegExp("/({{)(\\w*)(}})/gi");
 
-    stdout.write("----start chunk ----");
-    stdout.write(chunk);
-    stdout.write("----finish chunk ----");
+  readTemplateStream.on("data", async (streamData) => {
+    const replaceFieldRegEx = new RegExp(/{{\w*}}/gi);
+    const replaceFieldsArr = [
+      ...new Set(streamData.toString().match(replaceFieldRegEx)),
+    ];
+    let outputHTML = streamData.toString();
+    replaceFieldsArr.forEach((field) => {
+      const componentName = `${field.slice(2, -2)}.html`;
+      const createReadComponentStream = fs.createReadStream(
+        path.resolve(__dirname, "components", componentName)
+      );
+      const writeIndexHTMLStream = fs.createWriteStream(
+        path.resolve(__dirname, ...destinationDir, "index.html")
+      );
+      createReadComponentStream.on("data", (data) => {
+        outputHTML = outputHTML.replace(field, data.toString());
+        writeIndexHTMLStream.write(outputHTML);
+      });
+    });
   });
 };
 
