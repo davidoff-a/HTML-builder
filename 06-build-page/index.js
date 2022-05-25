@@ -1,9 +1,14 @@
-const { readdir, mkdir, copyFile, stat, access } = require("node:fs/promises");
+const {
+  readdir,
+  mkdir,
+  copyFile,
+  stat,
+  access,
+  rm,
+  exists,
+} = require("node:fs/promises");
 const path = require("path");
 const fs = require("fs");
-const { match, strictEqual } = require("assert");
-const { createSecurePair } = require("tls");
-const { stdout } = process;
 
 let sourceDir = ["assets"];
 let destinationDir = ["project-dist"];
@@ -25,12 +30,9 @@ const copyFiles = async (src, dest) => {
       if (fileData.isFile()) {
         try {
           await access(path.resolve(__dirname, ...dest, file.name));
-          await copyFile(
-            path.join(__dirname, ...src, file.name),
-            path.join(__dirname, ...dest, file.name)
-          );
         } catch (error) {
           await makeDir([path.resolve(__dirname, ...dest)]);
+        } finally {
           await copyFile(
             path.join(__dirname, ...src, file.name),
             path.join(__dirname, ...dest, file.name)
@@ -74,7 +76,38 @@ const mergeStyles = async () => {
     console.error("there was an error:", error.message);
   }
 };
-
+const rmFiles = async (dest) => {
+  try {
+    const destFiles = await readdir(path.resolve(__dirname, ...dest), {
+      withFileTypes: true,
+    });
+    if (destFiles.length > 0) {
+      for (let file of destFiles) {
+        const fileData = await stat(
+          path.resolve(__dirname, ...dest, file.name)
+        );
+        if (fileData.isFile()) {
+          await rm(path.resolve(__dirname, ...dest, file.name), {
+            recursive: true,
+            force: true,
+          });
+        }
+        if (fileData.isDirectory()) {
+          try {
+            await rm(path.resolve(__dirname, ...dest, file.name), {
+              recursive: true,
+              force: true,
+            });
+          } catch (e) {
+            await rmFiles(path.resolve(__dirname, ...dest, file.name));
+          }
+        }
+      }
+    }
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
 const buildHTML = async () => {
   const readTemplateStream = fs.createReadStream(
     path.resolve(__dirname, "template.html")
@@ -101,8 +134,11 @@ const buildHTML = async () => {
     });
   });
 };
-
-makeDir(destinationDir);
-copyFiles([...sourceDir], [...destinationDir, ...sourceDir]);
-mergeStyles();
-buildHTML();
+const buildPage = async () => {
+  await makeDir([...destinationDir, ...sourceDir]);
+  await rmFiles([...destinationDir, ...sourceDir]);
+  await copyFiles([...sourceDir], [...destinationDir, ...sourceDir]);
+  await mergeStyles();
+  await buildHTML();
+};
+buildPage();
