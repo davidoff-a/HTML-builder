@@ -1,5 +1,13 @@
-const { readdir, mkdir, copyFile, stat, access } = require("node:fs/promises");
+const {
+  readdir,
+  mkdir,
+  copyFile,
+  stat,
+  access,
+  rm,
+} = require("node:fs/promises");
 const path = require("path");
+const { unlink } = require("fs");
 
 let sourceDir = ["files"];
 let destinationDir = ["files-copy"];
@@ -48,6 +56,36 @@ const copyFiles = async (src, dest) => {
   }
 };
 
-makeDir(destinationDir);
+const rmFiles = async (dest) => {
+  try {
+    await access(path.resolve(__dirname, ...dest));
+    const destFiles = await readdir(path.resolve(__dirname, ...dest), {
+      withFileTypes: true,
+    });
+    for (let file of destFiles) {
+      const fileData = await stat(path.resolve(__dirname, ...dest, file.name));
 
-copyFiles(sourceDir, destinationDir);
+      if (fileData.isFile()) {
+        await rm(path.resolve(__dirname, ...dest, file.name), {
+          recursive: true,
+          force: true,
+        });
+      }
+      if (fileData.isDirectory()) {
+        try {
+          await rm(path.resolve(__dirname, ...dest, file.name), {
+            recursive: true,
+            force: true,
+          });
+        } catch (e) {
+          await rmFiles(path.resolve(__dirname, ...dest, file.name));
+        }
+      }
+    }
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+rmFiles(destinationDir)
+  .then(() => makeDir(destinationDir))
+  .then(() => copyFiles(sourceDir, destinationDir));
