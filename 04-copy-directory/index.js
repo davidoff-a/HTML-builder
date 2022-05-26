@@ -36,12 +36,9 @@ const copyFiles = async (src, dest) => {
       if (fileData.isFile()) {
         try {
           await access(path.resolve(__dirname, ...dest, file.name));
-          await copyFile(
-            path.join(__dirname, ...src, file.name),
-            path.join(__dirname, ...dest, file.name)
-          );
         } catch (error) {
           await makeDir([path.resolve(__dirname, ...dest)]);
+        } finally {
           await copyFile(
             path.join(__dirname, ...src, file.name),
             path.join(__dirname, ...dest, file.name)
@@ -86,6 +83,10 @@ const rmFiles = async (dest) => {
     throw new Error(err.message);
   }
 };
-rmFiles(destinationDir)
-  .then(() => makeDir(destinationDir))
-  .then(() => copyFiles(sourceDir, destinationDir));
+const copy = async () => {
+  await makeDir(destinationDir);
+  await rmFiles(destinationDir);
+  await copyFiles(sourceDir, destinationDir);
+};
+
+copy();
