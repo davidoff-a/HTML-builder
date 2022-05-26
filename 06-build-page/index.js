@@ -5,7 +5,6 @@ const {
   stat,
   access,
   rm,
-  exists,
 } = require("node:fs/promises");
 const path = require("path");
 const fs = require("fs");
